@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Web Xbox Controller</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            touch-action: none;
+            user-select: none;
+            background-color: #121212;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* Prevent text selection and context menu */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1rem;
+        }
+
+        .joystick-zone {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #333 0%, #1a1a1a 100%);
+            border: 2px solid #444;
+            position: relative;
+            box-shadow: inset 0 0 15px #000;
+        }
+
+        .joystick-thumb {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #555, #222);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.8), inset 0 1px 2px rgba(255,255,255,0.2);
+            border: 1px solid #333;
+        }
+
+        .joystick-thumb::after {
+            content: '';
+            position: absolute;
+            top: 10%;
+            left: 10%;
+            width: 80%;
+            height: 80%;
+            border-radius: 50%;
+            background: radial-gradient(circle at 50% 10%, rgba(255,255,255,0.1), transparent);
+        }
+
+        .btn-action {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 1.5rem;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5), inset 0 2px 3px rgba(255,255,255,0.2);
+            border: none;
+            transition: transform 0.05s;
+        }
+        
+        .btn-action:active, .btn-action.active {
+            transform: scale(0.95) translateY(2px);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+        }
+
+        .btn-a { background: #4caf50; color: #1a1a1a; text-shadow: 0 1px 0 rgba(255,255,255,0.3); }
+        .btn-b { background: #f44336; color: white; text-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+        .btn-x { background: #2196f3; color: white; text-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+        .btn-y { background: #ffeb3b; color: #1a1a1a; text-shadow: 0 1px 0 rgba(255,255,255,0.3); }
+
+        .dpad {
+            display: grid;
+            grid-template-columns: 45px 45px 45px;
+            grid-template-rows: 45px 45px 45px;
+        }
+        
+        .dpad-btn {
+            background: #333;
+            border: 1px solid #444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: #aaa;
+        }
+        
+        .dpad-btn:active, .dpad-btn.active {
+            background: #555;
+        }
+
+        .dpad-up { grid-column: 2; grid-row: 1; border-radius: 6px 6px 0 0; border-bottom: none; }
+        .dpad-left { grid-column: 1; grid-row: 2; border-radius: 6px 0 0 6px; border-right: none; }
+        .dpad-center { 
+            grid-column: 2; grid-row: 2; 
+            background: radial-gradient(circle, #222 20%, #333 100%); 
+            border: none;
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.8);
+        }
+        .dpad-right { grid-column: 3; grid-row: 2; border-radius: 0 6px 6px 0; border-left: none; }
+        .dpad-down { grid-column: 2; grid-row: 3; border-radius: 0 0 6px 6px; border-top: none; }
+
+        .trigger-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 120px;
+        }
+
+        .trigger-btn {
+            height: 60px;
+            width: 100%;
+            background: linear-gradient(to bottom, #333, #222);
+            border-radius: 0 0 16px 16px;
+            border: 1px solid #555;
+            border-top: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #ccc;
+            font-size: 1rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .trigger-fill {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 0%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: height 0.1s;
+        }
+
+        .bumper-btn {
+            height: 40px;
+            width: 100%;
+            background: linear-gradient(to bottom, #555, #444);
+            border-radius: 16px 16px 0 0;
+            border: 1px solid #666;
+            border-bottom: 1px solid #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 0.9rem;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            z-index: 2;
+        }
+        
+        .bumper-btn:active, .bumper-btn.active { background: #666; transform: translateY(2px); }
+        .trigger-btn:active, .trigger-btn.active { background: #444; }
+
+        .center-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #333;
+            border: 1px solid #555;
+            color: #aaa;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .xbox-btn {
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%, #fff, #e0e0e0);
+            box-shadow: 0 0 15px rgba(255,255,255,0.4), inset 0 -2px 5px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            color: #333;
+            font-size: 1.4rem;
+            margin: 0 15px;
+            border: 1px solid #ccc;
+        }
+
+        #setup-modal {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #f44336;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .connected .status-dot { background: #4caf50; box-shadow: 0 0 5px #4caf50; }
+        .connecting .status-dot { background: #ffeb3b; box-shadow: 0 0 5px #ffeb3b; }
+        
+        /* Rotate notification for portrait */
+        #rotate-notice {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #121212;
+            z-index: 2000;
+            display: none; /* Shown via JS if needed */
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            flex-direction: column;
+        }
+        @media (orientation: portrait) {
+            #rotate-notice { display: flex; }
+        }
+    </style>
+</head>
+<body class="flex flex-col h-full">
+
+    <!-- Rotate Notice -->
+    <div id="rotate-notice">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-gray-400 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+        </svg>
+        <h2 class="text-xl font-bold">Please Rotate Your Device</h2>
+        <p class="text-gray-400 mt-2">This controller works best in landscape mode.</p>
+    </div>
+
+    <!-- Setup Modal -->
+    <div id="setup-modal">
+        <div class="bg-gray-800 p-6 rounded-xl max-w-md w-full border border-gray-700 shadow-2xl m-4">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-xl font-bold text-white">Connect Controller</h2>
+                <button id="close-modal-btn" class="text-gray-400 hover:text-white">&times;</button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-gray-400 text-xs font-bold mb-2 uppercase">PC IP Address</label>
+                    <div class="flex gap-2">
+                        <input id="ip-input" type="text" placeholder="192.168.1.X" class="flex-1 bg-gray-900 text-white border border-gray-600 rounded py-3 px-4 focus:outline-none focus:border-green-500 font-mono">
+                        <input id="port-input" type="number" value="8080" class="w-24 bg-gray-900 text-white border border-gray-600 rounded py-3 px-4 focus:outline-none focus:border-green-500 font-mono text-center">
+                    </div>
+                    <p class="text-xs text-gray-500 mt-1">Find IP on PC: <code class="bg-gray-900 px-1 rounded">ipconfig</code> (Windows) or <code class="bg-gray-900 px-1 rounded">ifconfig</code> (Mac/Linux)</p>
+                </div>
+                
+                <button id="connect-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded transition duration-200 shadow-lg transform active:scale-95">
+                    CONNECT
+                </button>
+
+                <div class="text-center border-t border-gray-700 pt-4 mt-4">
+                    <p class="text-sm text-gray-300 font-semibold mb-2">Connection Types</p>
+                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-400">
+                        <div class="bg-gray-700/50 p-2 rounded">
+                            <span class="block font-bold text-white mb-1">WiFi</span>
+                            Phone & PC on same network. Use PC's Local IP.
+                        </div>
+                        <div class="bg-gray-700/50 p-2 rounded">
+                            <span class="block font-bold text-white mb-1">USB</span>
+                            Connect via USB Tethering. Use Gateway IP (often 192.168.42.1).
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top Bar: Shoulders -->
+    <div class="flex justify-between px-6 pt-2 pb-1 w-full absolute top-0 left-0 z-10">
+        <div class="trigger-group items-start">
+            <div id="btn-lb" class="bumper-btn" data-btn="lb">LB</div>
+            <div id="btn-lt" class="trigger-btn" data-btn="lt">
+                <span class="z-10">LT</span>
+                <div class="trigger-fill"></div>
+            </div>
+        </div>
+        
+        <div class="flex flex-col items-center pt-2" id="status-indicator">
+             <div class="flex items-center justify-center cursor-pointer bg-gray-900/50 px-3 py-1 rounded-full backdrop-blur-sm border border-gray-700" id="status-container">
+                 <div class="status-dot"></div> 
+                 <span class="text-xs font-bold text-gray-400" id="status-text">Not Connected</span>
+             </div>
+             <div class="flex gap-2 mt-2">
+                <button id="fullscreen-btn" class="text-xs text-gray-400 bg-gray-800/80 border border-gray-600 px-3 py-1 rounded hover:bg-gray-700 hover:text-white transition">Full</button>
+                <button id="settings-btn" class="text-xs text-gray-400 bg-gray-800/80 border border-gray-600 px-3 py-1 rounded hover:bg-gray-700 hover:text-white transition">Config</button>
+             </div>
+        </div>
+
+        <div class="trigger-group items-end">
+            <div id="btn-rb" class="bumper-btn" data-btn="rb">RB</div>
+            <div id="btn-rt" class="trigger-btn" data-btn="rt">
+                <span class="z-10">RT</span>
+                <div class="trigger-fill"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Controller Area -->
+    <div class="flex-1 flex w-full items-center justify-between px-8 pb-4 pt-16">
+        
+        <!-- Left Side -->
+        <div class="flex flex-col h-full justify-between items-center w-1/3">
+            <!-- Left Joystick -->
+            <div id="stick-left" class="joystick-zone mb-4">
+                <div class="joystick-thumb"></div>
+            </div>
+            
+            <!-- D-Pad -->
+            <div class="dpad mt-2">
+                <div class="dpad-btn dpad-up" data-btn="dpad_up"><svg width="10" height="10" viewBox="0 0 24 24"><path fill="currentColor" d="M12 4l-8 8h16z"/></svg></div>
+                <div class="dpad-btn dpad-left" data-btn="dpad_left"><svg width="10" height="10" viewBox="0 0 24 24"><path fill="currentColor" d="M4 12l8 8V4z"/></svg></div>
+                <div class="dpad-btn dpad-center"></div>
+                <div class="dpad-btn dpad-right" data-btn="dpad_right"><svg width="10" height="10" viewBox="0 0 24 24"><path fill="currentColor" d="M20 12l-8-8v16z"/></svg></div>
+                <div class="dpad-btn dpad-down" data-btn="dpad_down"><svg width="10" height="10" viewBox="0 0 24 24"><path fill="currentColor" d="M12 20l-8-8h16z"/></svg></div>
+            </div>
+        </div>
+
+        <!-- Center Area -->
+        <div class="flex flex-col justify-center items-center h-full w-1/3 pb-8">
+            <div class="flex gap-8 mb-4">
+                <div id="btn-back" class="center-btn" data-btn="back">BACK</div>
+                <div id="btn-start" class="center-btn" data-btn="start">START</div>
+            </div>
+            <div id="btn-guide" class="xbox-btn" data-btn="guide">X</div>
+        </div>
+
+        <!-- Right Side -->
+        <div class="flex flex-col h-full justify-between items-center w-1/3">
+            <!-- ABXY Buttons -->
+            <div class="relative w-36 h-36 mb-4">
+                <button id="btn-y" class="btn-action btn-y absolute top-0 left-1/2 transform -translate-x-1/2" data-btn="y">Y</button>
+                <button id="btn-x" class="btn-action btn-x absolute top-1/2 left-0 transform -translate-y-1/2" data-btn="x">X</button>
+                <button id="btn-b" class="btn-action btn-b absolute top-1/2 right-0 transform -translate-y-1/2" data-btn="b">B</button>
+                <button id="btn-a" class="btn-action btn-a absolute bottom-0 left-1/2 transform -translate-x-1/2" data-btn="a">A</button>
+            </div>
+
+            <!-- Right Joystick -->
+            <div id="stick-right" class="joystick-zone mt-2">
+                <div class="joystick-thumb"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State
+        const state = {
+            leftStick: { x: 0, y: 0 },
+            rightStick: { x: 0, y: 0 },
+            buttons: {
+                a: false, b: false, x: false, y: false,
+                lb: false, rb: false, lt: 0, rt: 0,
+                back: false, start: false, guide: false,
+                dpad_up: false, dpad_down: false, dpad_left: false, dpad_right: false
+            }
+        };
+
+        let ws = null;
+        let isConnected = false;
+        let reconnectInterval = null;
+        const UPDATE_RATE_MS = 16; // ~60fps
+
+        // Elements
+        const setupModal = document.getElementById('setup-modal');
+        const connectBtn = document.getElementById('connect-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const ipInput = document.getElementById('ip-input');
+        const portInput = document.getElementById('port-input');
+        const statusIndicator = document.getElementById('status-indicator');
+        const statusText = document.getElementById('status-text');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+
+        // Load saved IP
+        if(localStorage.getItem('xbox-controller-ip')) {
+            ipInput.value = localStorage.getItem('xbox-controller-ip');
+        }
+
+        // Setup UI Logic
+        settingsBtn.addEventListener('click', () => {
+            setupModal.style.display = 'flex';
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            setupModal.style.display = 'none';
+        });
+
+        connectBtn.addEventListener('click', () => {
+            const ip = ipInput.value;
+            const port = portInput.value;
+            if(ip) {
+                localStorage.setItem('xbox-controller-ip', ip);
+                connectWebSocket(ip, port);
+            } else {
+                alert("Please enter an IP address");
+            }
+        });
+        
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(e => {
+                    console.log(e);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen(); 
+                }
+            }
+        });
+
+        function connectWebSocket(ip, port) {
+            const url = `ws://${ip}:${port}`;
+            statusText.textContent = 'Connecting...';
+            statusIndicator.className = 'flex flex-col items-center pt-2 connecting';
+            
+            try {
+                ws = new WebSocket(url);
+                
+                ws.onopen = () => {
+                    console.log('Connected');
+                    isConnected = true;
+                    statusText.textContent = 'Connected';
+                    statusIndicator.className = 'flex flex-col items-center pt-2 connected';
+                    setupModal.style.display = 'none';
+                    startSendingLoop();
+                };
+                
+                ws.onclose = () => {
+                    console.log('Disconnected');
+                    isConnected = false;
+                    statusText.textContent = 'Disconnected';
+                    statusIndicator.className = 'flex flex-col items-center pt-2';
+                    // Optional: Reconnect logic could go here
+                };
+                
+                ws.onerror = (err) => {
+                    console.error('Socket error', err);
+                    statusText.textContent = 'Error';
+                };
+            } catch (e) {
+                console.error(e);
+                alert('Invalid IP/Port');
+            }
+        }
+
+        function startSendingLoop() {
+            if (window.senderLoop) clearInterval(window.senderLoop);
+            window.senderLoop = setInterval(() => {
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({
+                        type: 'controller_state',
+                        data: state
+                    }));
+                }
+            }, UPDATE_RATE_MS);
+        }
+
+        // Input Handling
+        function vibrate(ms) {
+            if (navigator.vibrate) navigator.vibrate(ms);
+        }
+
+        // Button Handlers
+        const buttons = document.querySelectorAll('[data-btn]');
+        buttons.forEach(btn => {
+            const key = btn.getAttribute('data-btn');
+            
+            const press = (e) => {
+                e.preventDefault(); // Prevent mouse emulation
+                if (key === 'lt' || key === 'rt') {
+                    state.buttons[key] = 1.0;
+                    const fill = btn.querySelector('.trigger-fill');
+                    if(fill) fill.style.height = '100%';
+                } else {
+                    state.buttons[key] = true;
+                }
+                btn.classList.add('active');
+                vibrate(15);
+            };
+            
+            const release = (e) => {
+                e.preventDefault();
+                if (key === 'lt' || key === 'rt') {
+                    state.buttons[key] = 0.0;
+                    const fill = btn.querySelector('.trigger-fill');
+                    if(fill) fill.style.height = '0%';
+                } else {
+                    state.buttons[key] = false;
+                }
+                btn.classList.remove('active');
+            };
+
+            btn.addEventListener('touchstart', press, { passive: false });
+            btn.addEventListener('mousedown', press); // For testing on PC
+            
+            btn.addEventListener('touchend', release, { passive: false });
+            btn.addEventListener('mouseup', release);
+            btn.addEventListener('mouseleave', release);
+        });
+
+        // Joystick Logic
+        function setupJoystick(elementId, stateKey) {
+            const zone = document.getElementById(elementId);
+            const thumb = zone.querySelector('.joystick-thumb');
+            const rect = zone.getBoundingClientRect();
+            const maxDist = 40; // Max pixels thumb can move from center
+            
+            let touchId = null;
+            
+            const updateStick = (clientX, clientY) => {
+                const rect = zone.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                let dx = clientX - centerX;
+                let dy = clientY - centerY;
+                
+                const distance = Math.sqrt(dx*dx + dy*dy);
+                
+                // Normalize
+                if (distance > maxDist) {
+                    const ratio = maxDist / distance;
+                    dx *= ratio;
+                    dy *= ratio;
+                }
+                
+                // Update UI
+                thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+                
+                // Update State (-1 to 1)
+                state[stateKey].x = dx / maxDist;
+                state[stateKey].y = dy / maxDist * -1; // Invert Y for standard gamepad logic (up is positive usually, screen Y is down positive)
+            };
+            
+            const resetStick = () => {
+                thumb.style.transform = `translate(-50%, -50%)`;
+                state[stateKey].x = 0;
+                state[stateKey].y = 0;
+                touchId = null;
+            };
+            
+            zone.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                touchId = touch.identifier;
+                updateStick(touch.clientX, touch.clientY);
+                vibrate(10);
+            }, { passive: false });
+            
+            zone.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === touchId) {
+                        updateStick(e.changedTouches[i].clientX, e.changedTouches[i].clientY);
+                        break;
+                    }
+                }
+            }, { passive: false });
+            
+            const endTouch = (e) => {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === touchId) {
+                        resetStick();
+                        break;
+                    }
+                }
+            };
+
+            zone.addEventListener('touchend', endTouch, { passive: false });
+            zone.addEventListener('touchcancel', endTouch, { passive: false });
+            
+            // Mouse fallback for testing
+            let isDragging = false;
+            zone.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                updateStick(e.clientX, e.clientY);
+            });
+            window.addEventListener('mousemove', (e) => {
+                if (isDragging) updateStick(e.clientX, e.clientY);
+            });
+            window.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    resetStick();
+                }
+            });
+        }
+
+        setupJoystick('stick-left', 'leftStick');
+        setupJoystick('stick-right', 'rightStick');
+
+        // Reposition logic on resize (orientation change)
+        window.addEventListener('resize', () => {
+            // Optional re-calc logic if needed
+        });
+
+        // Prevent context menu
+        window.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            return false;
+        });
+
+    </script>
+</body>
+</html>
