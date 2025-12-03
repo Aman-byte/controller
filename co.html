@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Web Xbox Controller</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        body {
+            touch-action: none; /* Prevent scrolling and zooming */
+            user-select: none;
+            -webkit-user-select: none;
+            overscroll-behavior: none;
+            background-color: #1a1a1a;
+            color: white;
+            font-family: system-ui, -apple-system, sans-serif;
+            overflow: hidden;
+        }
+
+        /* Joystick Area */
+        .joystick-area {
+            width: 120px;
+            height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            position: relative;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .joystick-thumb {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #4a4a4a, #2a2a2a);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+            border: 1px solid #555;
+            pointer-events: none; /* Let touch pass through to area */
+        }
+
+        /* Buttons */
+        .abxy-grid {
+            display: grid;
+            grid-template-columns: 60px 60px 60px;
+            grid-template-rows: 60px 60px 60px;
+            gap: 5px;
+        }
+
+        .btn-round {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
+            transition: transform 0.1s;
+            border: 2px solid rgba(255,255,255,0.1);
+        }
+        
+        .btn-round:active, .btn-round.active {
+            transform: scale(0.9);
+            box-shadow: 0 2px 3px rgba(0,0,0,0.4);
+            background-color: rgba(255,255,255,0.2) !important;
+        }
+
+        .btn-y { background-color: #f1c40f; color: #000; grid-column: 2; grid-row: 1; }
+        .btn-x { background-color: #3498db; color: #fff; grid-column: 1; grid-row: 2; }
+        .btn-b { background-color: #e74c3c; color: #fff; grid-column: 3; grid-row: 2; }
+        .btn-a { background-color: #2ecc71; color: #000; grid-column: 2; grid-row: 3; }
+
+        /* D-Pad */
+        .dpad {
+            display: grid;
+            grid-template-columns: 40px 40px 40px;
+            grid-template-rows: 40px 40px 40px;
+        }
+        .dpad-btn {
+            background: #333;
+            border: 1px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .dpad-btn:active, .dpad-btn.active { background: #555; }
+        .dpad-up { grid-column: 2; grid-row: 1; border-radius: 5px 5px 0 0; }
+        .dpad-left { grid-column: 1; grid-row: 2; border-radius: 5px 0 0 5px; }
+        .dpad-right { grid-column: 3; grid-row: 2; border-radius: 0 5px 5px 0; }
+        .dpad-down { grid-column: 2; grid-row: 3; border-radius: 0 0 5px 5px; }
+        .dpad-center { grid-column: 2; grid-row: 2; background: #333; }
+
+        /* Shoulders */
+        .shoulder-btn {
+            height: 40px;
+            background: #333;
+            border: 1px solid #555;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        .shoulder-btn:active, .shoulder-btn.active { background: #555; }
+
+        .trigger-btn {
+            height: 50px;
+            background: #222;
+            border: 1px solid #444;
+            border-radius: 8px 8px 20px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .trigger-btn:active, .trigger-btn.active { background: #444; }
+
+        /* Menu buttons */
+        .menu-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #333;
+            border: 1px solid #555;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+        }
+        .menu-btn:active, .menu-btn.active { background: #555; }
+
+        /* Modal */
+        #config-modal {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col">
+
+    <!-- Top Bar: Triggers and Shoulders -->
+    <div class="flex justify-between px-4 py-2 w-full absolute top-0 left-0 pointer-events-none z-10">
+        <div class="flex gap-2 pointer-events-auto">
+            <div class="flex flex-col w-24">
+                <div class="trigger-btn mb-1" data-btn="lt">LT</div>
+                <div class="shoulder-btn" data-btn="lb">LB</div>
+            </div>
+        </div>
+        <div class="flex flex-col items-center pointer-events-auto">
+             <button id="settings-btn" class="bg-gray-700 text-xs px-2 py-1 rounded text-gray-300 opacity-50">⚙️</button>
+             <div id="status-indicator" class="w-3 h-3 rounded-full bg-red-500 mt-1"></div>
+        </div>
+        <div class="flex gap-2 pointer-events-auto">
+            <div class="flex flex-col w-24">
+                <div class="trigger-btn mb-1" data-btn="rt">RT</div>
+                <div class="shoulder-btn" data-btn="rb">RB</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Control Area -->
+    <div class="flex-1 flex w-full h-full pt-16 pb-4 px-4 box-border">
+        
+        <!-- Left Side -->
+        <div class="flex-1 flex flex-col justify-between items-center">
+            <!-- Left Stick -->
+            <div class="joystick-area" id="stick-left">
+                <div class="joystick-thumb" id="thumb-left"></div>
+            </div>
+            
+            <!-- D-Pad -->
+            <div class="dpad mt-4">
+                <div class="dpad-btn dpad-up" data-btn="dpad_up">▲</div>
+                <div class="dpad-btn dpad-left" data-btn="dpad_left">◀</div>
+                <div class="dpad-btn dpad-center"></div>
+                <div class="dpad-btn dpad-right" data-btn="dpad_right">▶</div>
+                <div class="dpad-btn dpad-down" data-btn="dpad_down">▼</div>
+            </div>
+        </div>
+
+        <!-- Center -->
+        <div class="w-1/5 flex flex-col justify-center items-center gap-8">
+            <div class="menu-btn" data-btn="back">BACK</div>
+            <div class="menu-btn bg-green-900 border-green-700" data-btn="guide">X</div>
+            <div class="menu-btn" data-btn="start">START</div>
+        </div>
+
+        <!-- Right Side -->
+        <div class="flex-1 flex flex-col justify-between items-center">
+            <!-- ABXY -->
+            <div class="abxy-grid mb-4">
+                <div class="btn-round btn-y" data-btn="y">Y</div>
+                <div class="btn-round btn-x" data-btn="x">X</div>
+                <div class="btn-round btn-b" data-btn="b">B</div>
+                <div class="btn-round btn-a" data-btn="a">A</div>
+            </div>
+
+            <!-- Right Stick -->
+            <div class="joystick-area" id="stick-right">
+                <div class="joystick-thumb" id="thumb-right"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Configuration Modal -->
+    <div id="config-modal">
+        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+            <h2 class="text-xl font-bold mb-4 text-white">Connect to PC</h2>
+            <p class="text-gray-400 text-sm mb-4">Ensure USB Tethering is ON and PC script is running.</p>
+            
+            <div class="mb-4 text-left">
+                <label class="block text-gray-400 text-xs mb-1">PC IP Address</label>
+                <input type="text" id="ip-input" value="192.168.137.1" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 outline-none">
+            </div>
+            
+            <div class="mb-6 text-left">
+                <label class="block text-gray-400 text-xs mb-1">Port</label>
+                <input type="number" id="port-input" value="8000" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 outline-none">
+            </div>
+
+            <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">CONNECT</button>
+            <button id="close-modal-btn" class="mt-2 w-full bg-transparent text-gray-400 text-sm hover:text-white hidden">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        // --- WebSocket Connection ---
+        let socket = null;
+        const statusIndicator = document.getElementById('status-indicator');
+        const configModal = document.getElementById('config-modal');
+        const ipInput = document.getElementById('ip-input');
+        const portInput = document.getElementById('port-input');
+        const connectBtn = document.getElementById('connect-btn');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+
+        // Load saved config
+        if(localStorage.getItem('xbox_ip')) ipInput.value = localStorage.getItem('xbox_ip');
+        if(localStorage.getItem('xbox_port')) portInput.value = localStorage.getItem('xbox_port');
+
+        function connect() {
+            const ip = ipInput.value;
+            const port = portInput.value;
+            
+            localStorage.setItem('xbox_ip', ip);
+            localStorage.setItem('xbox_port', port);
+
+            connectBtn.innerText = "Connecting...";
+            connectBtn.disabled = true;
+
+            try {
+                socket = new WebSocket(`ws://${ip}:${port}`);
+
+                socket.onopen = () => {
+                    console.log("Connected");
+                    statusIndicator.classList.remove('bg-red-500');
+                    statusIndicator.classList.add('bg-green-500');
+                    configModal.style.display = 'none';
+                    connectBtn.innerText = "CONNECT";
+                    connectBtn.disabled = false;
+                    closeModalBtn.classList.remove('hidden'); // Allow closing later if reopening settings
+                };
+
+                socket.onclose = () => {
+                    console.log("Disconnected");
+                    statusIndicator.classList.remove('bg-green-500');
+                    statusIndicator.classList.add('bg-red-500');
+                    // Don't auto-show modal to avoid annoyance during gameplay hiccups
+                };
+
+                socket.onerror = (err) => {
+                    console.error("Error", err);
+                    connectBtn.innerText = "Failed. Retry?";
+                    connectBtn.disabled = false;
+                };
+
+            } catch (e) {
+                console.error(e);
+                connectBtn.innerText = "Error";
+                connectBtn.disabled = false;
+            }
+        }
+
+        connectBtn.addEventListener('click', connect);
+        settingsBtn.addEventListener('click', () => {
+            configModal.style.display = 'flex';
+        });
+        closeModalBtn.addEventListener('click', () => {
+            configModal.style.display = 'none';
+        });
+
+        // --- Controller State ---
+        const state = {
+            left_stick: { x: 0, y: 0 },
+            right_stick: { x: 0, y: 0 },
+            buttons: {
+                a: 0, b: 0, x: 0, y: 0,
+                lb: 0, rb: 0, lt: 0, rt: 0,
+                back: 0, start: 0, guide: 0,
+                dpad_up: 0, dpad_down: 0, dpad_left: 0, dpad_right: 0
+            }
+        };
+
+        // Send state loop (only send if connected)
+        let lastStateJSON = "";
+        
+        function gameLoop() {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                const currentJSON = JSON.stringify(state);
+                // Optimization: Send only if state changed or send regular heartbeat (every 30ms)
+                // For gaming, sending continuous stream is often safer to prevent stuck inputs if a packet drops (though TCP/WS handles that)
+                // We will send every frame or throttled
+                socket.send(currentJSON);
+            }
+            requestAnimationFrame(gameLoop);
+        }
+        gameLoop();
+
+        // --- Button Handling ---
+        const buttons = document.querySelectorAll('[data-btn]');
+        
+        buttons.forEach(btn => {
+            const key = btn.getAttribute('data-btn');
+            
+            // Touch Start
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault(); // Prevent ghost clicks
+                btn.classList.add('active');
+                state.buttons[key] = 1;
+                if(navigator.vibrate) navigator.vibrate(10);
+            }, { passive: false });
+
+            // Touch End
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                btn.classList.remove('active');
+                state.buttons[key] = 0;
+            }, { passive: false });
+            
+            // Mouse events for desktop testing
+            btn.addEventListener('mousedown', () => {
+                btn.classList.add('active');
+                state.buttons[key] = 1;
+            });
+            btn.addEventListener('mouseup', () => {
+                btn.classList.remove('active');
+                state.buttons[key] = 0;
+            });
+        });
+
+        // --- Joystick Logic ---
+        function setupJoystick(areaId, thumbId, stateKey) {
+            const area = document.getElementById(areaId);
+            const thumb = document.getElementById(thumbId);
+            let touchId = null;
+            
+            const maxRadius = area.offsetWidth / 2;
+            const center = { x: area.offsetLeft + maxRadius, y: area.offsetTop + maxRadius }; // Approximate, recalculated on touch
+
+            function handleStart(e) {
+                e.preventDefault();
+                const touch = e.changedTouches[0];
+                touchId = touch.identifier;
+                
+                // Recalculate center based on rect to handle layout changes
+                const rect = area.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                
+                updateJoystick(touch.clientX, touch.clientY, centerX, centerY);
+            }
+
+            function handleMove(e) {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === touchId) {
+                        const touch = e.changedTouches[i];
+                        const rect = area.getBoundingClientRect();
+                        const centerX = rect.left + rect.width / 2;
+                        const centerY = rect.top + rect.height / 2;
+                        updateJoystick(touch.clientX, touch.clientY, centerX, centerY);
+                        break;
+                    }
+                }
+            }
+
+            function handleEnd(e) {
+                e.preventDefault();
+                for (let i = 0; i < e.changedTouches.length; i++) {
+                    if (e.changedTouches[i].identifier === touchId) {
+                        touchId = null;
+                        resetJoystick();
+                        break;
+                    }
+                }
+            }
+
+            function updateJoystick(clientX, clientY, centerX, centerY) {
+                let dx = clientX - centerX;
+                let dy = clientY - centerY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Clamp
+                if (distance > maxRadius) {
+                    const ratio = maxRadius / distance;
+                    dx *= ratio;
+                    dy *= ratio;
+                }
+
+                // Move thumb
+                thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+                // Update state (-1 to 1)
+                // Invert Y because stick up is negative usually in gamepads, but web Y is positive down
+                // Actually standard XInput: Up is positive Y. Web: Down is positive Y.
+                // Let's normalize: Up (screen top) = 1.0, Down = -1.0.
+                // Web Y: 0 at top. moving up decreases Y.
+                // dy is negative when moving up.
+                // So -dy / maxRadius gives 0 to 1 for up.
+                
+                state[stateKey].x = parseFloat((dx / maxRadius).toFixed(3));
+                state[stateKey].y = parseFloat((-dy / maxRadius).toFixed(3)); // Invert Y for standard gamepad feel
+            }
+
+            function resetJoystick() {
+                thumb.style.transform = `translate(-50%, -50%)`;
+                state[stateKey].x = 0;
+                state[stateKey].y = 0;
+            }
+
+            area.addEventListener('touchstart', handleStart, { passive: false });
+            area.addEventListener('touchmove', handleMove, { passive: false });
+            area.addEventListener('touchend', handleEnd, { passive: false });
+            area.addEventListener('touchcancel', handleEnd, { passive: false });
+        }
+
+        setupJoystick('stick-left', 'thumb-left', 'left_stick');
+        setupJoystick('stick-right', 'thumb-right', 'right_stick');
+        
+        // Fullscreen toggle helper
+        document.body.addEventListener('dblclick', () => {
+             if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(e=>{});
+            }
+        });
+
+    </script>
+</body>
+</html>
