@@ -370,26 +370,55 @@
 
         // Fullscreen Toggle
         const fullscreenBtn = document.getElementById('btn-fullscreen');
-        fullscreenBtn.addEventListener('click', () => {
-            if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(err => {
-                    console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
-                });
+        
+        function toggleFullScreen() {
+            var doc = window.document;
+            var docEl = doc.documentElement;
+
+            var requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+            var cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+
+            if(!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+                if (requestFullScreen) {
+                    requestFullScreen.call(docEl).catch(err => {
+                        console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    });
+                } else {
+                    // iOS doesn't support standard fullscreen API for elements in Safari
+                    alert("Fullscreen API not supported. Try 'Add to Home Screen' for a native-like experience.");
+                }
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
+                if(cancelFullScreen) {
+                    cancelFullScreen.call(doc);
                 }
             }
+        }
+
+        // Handle both click and touchend for robustness
+        fullscreenBtn.addEventListener('click', (e) => {
+            toggleFullScreen();
+        });
+        
+        fullscreenBtn.addEventListener('touchend', (e) => {
+            e.preventDefault(); // Prevent mouse emulation handling (click)
+            e.stopPropagation();
+            toggleFullScreen();
         });
 
         // Update button icon based on fullscreen state
-        document.addEventListener('fullscreenchange', () => {
-            if (document.fullscreenElement) {
+        const onFullScreenChange = () => {
+            const isFullScreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (isFullScreen) {
                 fullscreenBtn.classList.add('text-green-500');
             } else {
                 fullscreenBtn.classList.remove('text-green-500');
             }
-        });
+        };
+
+        document.addEventListener('fullscreenchange', onFullScreenChange);
+        document.addEventListener('webkitfullscreenchange', onFullScreenChange);
+        document.addEventListener('mozfullscreenchange', onFullScreenChange);
+        document.addEventListener('MSFullscreenChange', onFullScreenChange);
 
         // Simulation Loop (Data Transmission)
         setInterval(() => {
