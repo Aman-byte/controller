@@ -6,452 +6,760 @@
     <title>Web Xbox Controller</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <style>
+        * {
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        html {
+            background-color: #111;
+        }
+
         body {
-            touch-action: none; /* Prevent scrolling and zooming */
+            overscroll-behavior: none;
             user-select: none;
             -webkit-user-select: none;
-            overscroll-behavior: none;
-            background-color: #1a1a1a;
+            background-color: #111;
             color: white;
-            font-family: system-ui, -apple-system, sans-serif;
+            font-family: sans-serif;
             overflow: hidden;
         }
-
-        /* Joystick Area */
-        .joystick-area {
-            width: 120px;
-            height: 120px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 50%;
-            position: relative;
-            border: 2px solid rgba(255, 255, 255, 0.2);
+        
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
-        .joystick-thumb {
-            width: 50px;
-            height: 50px;
-            background: linear-gradient(135deg, #4a4a4a, #2a2a2a);
+        .btn-press {
+            transform: scale(0.90);
+            filter: brightness(1.2);
+            box-shadow: 0 0 15px rgba(255,255,255,0.4);
+        }
+
+        /* Joystick specific styles */
+        .joystick-base {
+            position: relative;
             border-radius: 50%;
+            background: rgba(30, 30, 30, 0.8);
+            box-shadow: inset 0 0 10px #000;
+            border: 2px solid #333;
+        }
+
+        .joystick-stick {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.5);
-            border: 1px solid #555;
-            pointer-events: none; /* Let touch pass through to area */
-        }
-
-        /* Buttons */
-        .abxy-grid {
-            display: grid;
-            grid-template-columns: 60px 60px 60px;
-            grid-template-rows: 60px 60px 60px;
-            gap: 5px;
-        }
-
-        .btn-round {
-            width: 60px;
-            height: 60px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            font-size: 1.2rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.4);
-            transition: transform 0.1s;
-            border: 2px solid rgba(255,255,255,0.1);
+            background: radial-gradient(circle at 30% 30%, #444, #111);
+            box-shadow: 0 4px 5px rgba(0,0,0,0.5);
+            border: 1px solid #555;
+            pointer-events: none; /* Let touches pass through to base */
+            width: 50%;
+            height: 50%;
         }
         
-        .btn-round:active, .btn-round.active {
-            transform: scale(0.9);
-            box-shadow: 0 2px 3px rgba(0,0,0,0.4);
-            background-color: rgba(255,255,255,0.2) !important;
-        }
-
-        .btn-y { background-color: #f1c40f; color: #000; grid-column: 2; grid-row: 1; }
-        .btn-x { background-color: #3498db; color: #fff; grid-column: 1; grid-row: 2; }
-        .btn-b { background-color: #e74c3c; color: #fff; grid-column: 3; grid-row: 2; }
-        .btn-a { background-color: #2ecc71; color: #000; grid-column: 2; grid-row: 3; }
-
         /* D-Pad */
-        .dpad {
+        .dpad-grid {
             display: grid;
-            grid-template-columns: 40px 40px 40px;
-            grid-template-rows: 40px 40px 40px;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 2px;
         }
+        
         .dpad-btn {
-            background: #333;
-            border: 1px solid #555;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .dpad-btn:active, .dpad-btn.active { background: #555; }
-        .dpad-up { grid-column: 2; grid-row: 1; border-radius: 5px 5px 0 0; }
-        .dpad-left { grid-column: 1; grid-row: 2; border-radius: 5px 0 0 5px; }
-        .dpad-right { grid-column: 3; grid-row: 2; border-radius: 0 5px 5px 0; }
-        .dpad-down { grid-column: 2; grid-row: 3; border-radius: 0 0 5px 5px; }
-        .dpad-center { grid-column: 2; grid-row: 2; background: #333; }
-
-        /* Shoulders */
-        .shoulder-btn {
-            height: 40px;
-            background: #333;
-            border: 1px solid #555;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-        }
-        .shoulder-btn:active, .shoulder-btn.active { background: #555; }
-
-        .trigger-btn {
-            height: 50px;
             background: #222;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .dpad-btn:active, .dpad-btn.active {
+            background: #444;
+        }
+
+        .dpad-center {
+            background: #222;
+        }
+        
+        /* Add a subtle border to the whole cross shape if needed, or shadow */
+        .dpad-grid {
+            background: transparent;
+            filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
+        }
+
+        /* Face Buttons Colors */
+        .btn-a { background: radial-gradient(circle, #4ade80 0%, #166534 100%); border: 2px solid #14532d; color: #000; }
+        .btn-b { background: radial-gradient(circle, #f87171 0%, #991b1b 100%); border: 2px solid #7f1d1d; }
+        .btn-x { background: radial-gradient(circle, #60a5fa 0%, #1e40af 100%); border: 2px solid #1e3a8a; }
+        .btn-y { background: radial-gradient(circle, #facc15 0%, #854d0e 100%); border: 2px solid #713f12; color: #000; }
+
+        /* Shoulder Buttons */
+        .shoulder-btn {
+            background: linear-gradient(to bottom, #333, #111);
             border: 1px solid #444;
-            border-radius: 8px 8px 20px 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            border-radius: 4px 4px 12px 12px;
         }
-        .trigger-btn:active, .trigger-btn.active { background: #444; }
-
-        /* Menu buttons */
-        .menu-btn {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: #333;
-            border: 1px solid #555;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.8rem;
+        
+        .trigger-btn {
+            background: linear-gradient(to bottom, #333, #111);
+            border: 1px solid #444;
+            border-radius: 12px 12px 4px 4px;
         }
-        .menu-btn:active, .menu-btn.active { background: #555; }
 
-        /* Modal */
-        #config-modal {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
+        /* Orientation Helper */
+        #landscape-warning {
+            display: none;
+        }
+        
+        /* Modal Styles */
+        .modal {
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        @media (orientation: portrait) {
+            #landscape-warning {
+                display: flex;
+            }
+            #main-ui {
+                display: none;
+            }
+        }
+
+        /* Re-enable interactions for modal */
+        #settings-modal, #settings-modal * {
+            touch-action: auto !important; /* Force enable all touch events (scrolling/copying) */
+            user-select: text !important;
+            -webkit-user-select: text !important;
         }
     </style>
 </head>
-<body class="h-screen w-screen flex flex-col">
+<body class="h-screen w-screen overflow-hidden">
 
-    <!-- Top Bar: Triggers and Shoulders -->
-    <div class="flex justify-between px-4 py-2 w-full absolute top-0 left-0 pointer-events-none z-10">
-        <div class="flex gap-2 pointer-events-auto">
-            <div class="flex flex-col w-24">
-                <div class="trigger-btn mb-1" data-btn="lt">LT</div>
-                <div class="shoulder-btn" data-btn="lb">LB</div>
-            </div>
-        </div>
-        <div class="flex flex-col items-center pointer-events-auto">
-             <button id="settings-btn" class="bg-gray-700 text-xs px-2 py-1 rounded text-gray-300 opacity-50">⚙️</button>
-             <div id="status-indicator" class="w-3 h-3 rounded-full bg-red-500 mt-1"></div>
-        </div>
-        <div class="flex gap-2 pointer-events-auto">
-            <div class="flex flex-col w-24">
-                <div class="trigger-btn mb-1" data-btn="rt">RT</div>
-                <div class="shoulder-btn" data-btn="rb">RB</div>
-            </div>
-        </div>
+    <!-- Orientation Warning -->
+    <div id="landscape-warning" class="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-8 text-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-24 w-24 text-blue-500 mb-4 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+        </svg>
+        <h1 class="text-2xl font-bold mb-2">Rotate Your Device</h1>
+        <p class="text-gray-400">This controller works best in landscape mode.</p>
     </div>
 
-    <!-- Main Control Area -->
-    <div class="flex-1 flex w-full h-full pt-16 pb-4 px-4 box-border">
+    <!-- Main Controller UI -->
+    <div id="main-ui" class="w-full h-full flex flex-col p-2 md:p-6 relative">
         
-        <!-- Left Side -->
-        <div class="flex-1 flex flex-col justify-between items-center">
-            <!-- Left Stick -->
-            <div class="joystick-area" id="stick-left">
-                <div class="joystick-thumb" id="thumb-left"></div>
+        <!-- Top Bar (Shoulders & Triggers) -->
+        <div class="w-full flex justify-between px-4 md:px-12 mb-2">
+            <div class="flex gap-2">
+                <div id="btn-lt" class="trigger-btn w-24 h-12 flex items-center justify-center font-bold text-xs text-gray-400 active:bg-gray-700 transition-colors" data-key="LT">LT</div>
+                <div id="btn-lb" class="shoulder-btn w-24 h-10 mt-2 flex items-center justify-center font-bold text-xs text-gray-400 active:bg-gray-700 transition-colors" data-key="LB">LB</div>
             </div>
             
-            <!-- D-Pad -->
-            <div class="dpad mt-4">
-                <div class="dpad-btn dpad-up" data-btn="dpad_up">▲</div>
-                <div class="dpad-btn dpad-left" data-btn="dpad_left">◀</div>
-                <div class="dpad-btn dpad-center"></div>
-                <div class="dpad-btn dpad-right" data-btn="dpad_right">▶</div>
-                <div class="dpad-btn dpad-down" data-btn="dpad_down">▼</div>
+            <!-- Connection Status / Center -->
+            <div class="flex flex-col items-center justify-start pt-1">
+                 <div id="usb-status" class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-1">USB Disconnected</div>
+                 <div class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_red] transition-colors duration-500" id="status-led"></div>
+                 <div class="flex gap-4 mt-2">
+                    <button id="btn-fullscreen" class="text-gray-600 hover:text-white transition-colors p-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    </button>
+                    <button id="btn-settings" class="text-gray-600 hover:text-white transition-colors p-2 animate-bounce">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                 </div>
+            </div>
+
+            <div class="flex gap-2">
+                <div id="btn-rb" class="shoulder-btn w-24 h-10 mt-2 flex items-center justify-center font-bold text-xs text-gray-400 active:bg-gray-700 transition-colors" data-key="RB">RB</div>
+                <div id="btn-rt" class="trigger-btn w-24 h-12 flex items-center justify-center font-bold text-xs text-gray-400 active:bg-gray-700 transition-colors" data-key="RT">RT</div>
             </div>
         </div>
 
-        <!-- Center -->
-        <div class="w-1/5 flex flex-col justify-center items-center gap-8">
-            <div class="menu-btn" data-btn="back">BACK</div>
-            <div class="menu-btn bg-green-900 border-green-700" data-btn="guide">X</div>
-            <div class="menu-btn" data-btn="start">START</div>
-        </div>
+        <!-- Main Control Area -->
+        <div class="flex-1 flex justify-between items-end pb-6 px-4 md:px-12 relative">
+            
+            <!-- Left Side: Stick & D-Pad -->
+            <div class="flex flex-col items-center gap-4 w-1/3 h-full justify-end relative">
+                
+                <!-- Left Stick (Top) -->
+                <div class="absolute top-0 left-0 md:left-8">
+                    <div id="stick-l" class="joystick-base w-32 h-32 md:w-40 md:h-40" data-axis="left">
+                        <div class="joystick-stick transition-transform duration-75"></div>
+                    </div>
+                </div>
 
-        <!-- Right Side -->
-        <div class="flex-1 flex flex-col justify-between items-center">
-            <!-- ABXY -->
-            <div class="abxy-grid mb-4">
-                <div class="btn-round btn-y" data-btn="y">Y</div>
-                <div class="btn-round btn-x" data-btn="x">X</div>
-                <div class="btn-round btn-b" data-btn="b">B</div>
-                <div class="btn-round btn-a" data-btn="a">A</div>
+                <!-- D-Pad (Bottom) -->
+                <div class="absolute bottom-0 right-0 md:right-8 translate-y-[-20px]">
+                    <div class="dpad-grid w-32 h-32 rounded-full overflow-hidden bg-transparent">
+                        <div class="dpad-btn rounded-tl-lg opacity-0"></div> <!-- Spacer -->
+                        <div id="btn-up" class="dpad-btn rounded-t-md" data-key="UP">
+                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 15l7-7 7 7"></path></svg>
+                        </div>
+                        <div class="dpad-btn rounded-tr-lg opacity-0"></div> <!-- Spacer -->
+                        
+                        <div id="btn-left" class="dpad-btn rounded-l-md" data-key="LEFT">
+                            <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 19l-7-7 7-7"></path></svg>
+                        </div>
+                        <div class="dpad-center flex items-center justify-center"></div>
+                        <div id="btn-right" class="dpad-btn rounded-r-md" data-key="RIGHT">
+                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M9 5l7 7-7 7"></path></svg>
+                        </div>
+                        
+                        <div class="dpad-btn rounded-bl-lg opacity-0"></div> <!-- Spacer -->
+                        <div id="btn-down" class="dpad-btn rounded-b-md" data-key="DOWN">
+                             <svg class="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7"></path></svg>
+                        </div>
+                        <div class="dpad-btn rounded-br-lg opacity-0"></div> <!-- Spacer -->
+                    </div>
+                </div>
             </div>
 
-            <!-- Right Stick -->
-            <div class="joystick-area" id="stick-right">
-                <div class="joystick-thumb" id="thumb-right"></div>
+            <!-- Center Controls -->
+            <div class="flex gap-6 mb-8">
+                <div id="btn-view" class="w-8 h-8 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center active:bg-gray-500" data-key="VIEW">
+                     <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </div>
+                
+                <!-- Xbox/Home Button -->
+                <div id="btn-home" class="w-12 h-12 -mt-4 rounded-full bg-gray-800 border-2 border-white flex items-center justify-center shadow-[0_0_15px_rgba(255,255,255,0.2)] active:bg-gray-700" data-key="HOME">
+                    <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 2c1.56 0 3.01.43 4.28 1.17l-6.95 6.95L6.5 9.33A8.002 8.002 0 0 1 12 4zm-7.83 6.86l2.95 2.95-2.95 2.95A7.96 7.96 0 0 1 4.17 10.86zm3.66 6.77l2.95-2.95 2.95 2.95A7.96 7.96 0 0 1 7.83 17.63zM12 20a7.96 7.96 0 0 1-4.28-1.25l3.69-3.69 3.69 3.69A7.96 7.96 0 0 1 12 20zm7.83-3.14l-2.95-2.95 2.95-2.95a7.96 7.96 0 0 1 0 5.9z"/></svg>
+                </div>
+
+                <div id="btn-menu" class="w-8 h-8 rounded-full bg-gray-700 border border-gray-600 flex items-center justify-center active:bg-gray-500" data-key="MENU">
+                    <svg class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                </div>
+            </div>
+
+            <!-- Right Side: Stick & ABXY -->
+            <div class="flex flex-col items-center gap-4 w-1/3 h-full justify-end relative">
+                
+                <!-- ABXY Buttons (Top) -->
+                <div class="absolute top-0 right-0 md:right-8">
+                    <div class="relative w-40 h-40">
+                        <div id="btn-y" class="btn-y absolute top-0 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shadow-lg transition-transform" data-key="Y">Y</div>
+                        <div id="btn-x" class="btn-x absolute top-1/2 left-0 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shadow-lg transition-transform text-white" data-key="X">X</div>
+                        <div id="btn-b" class="btn-b absolute top-1/2 right-0 -translate-y-1/2 w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shadow-lg transition-transform text-white" data-key="B">B</div>
+                        <div id="btn-a" class="btn-a absolute bottom-0 left-1/2 -translate-x-1/2 w-14 h-14 rounded-full flex items-center justify-center text-xl font-bold shadow-lg transition-transform" data-key="A">A</div>
+                    </div>
+                </div>
+
+                <!-- Right Stick (Bottom) -->
+                <div class="absolute bottom-0 left-0 md:left-8 translate-y-[-10px]">
+                    <div id="stick-r" class="joystick-base w-32 h-32 md:w-40 md:h-40" data-axis="right">
+                         <div class="joystick-stick transition-transform duration-75"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Configuration Modal -->
-    <div id="config-modal">
-        <div class="bg-gray-800 p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
-            <h2 class="text-xl font-bold mb-4 text-white">Connect to PC</h2>
-            <p class="text-gray-400 text-sm mb-4">Ensure USB Tethering is ON and PC script is running.</p>
-            
-            <div class="mb-4 text-left">
-                <label class="block text-gray-400 text-xs mb-1">PC IP Address</label>
-                <input type="text" id="ip-input" value="192.168.137.1" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 outline-none">
-            </div>
-            
-            <div class="mb-6 text-left">
-                <label class="block text-gray-400 text-xs mb-1">Port</label>
-                <input type="number" id="port-input" value="8000" class="w-full bg-gray-700 text-white p-2 rounded border border-gray-600 focus:border-blue-500 outline-none">
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal fixed inset-0 z-40 bg-black/80 flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-[#1a1a1a] border border-gray-700 rounded-xl p-6 w-[90%] max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white">Controller Settings</h2>
+                <button id="btn-close-modal" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
             </div>
 
-            <button id="connect-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 px-4 rounded">CONNECT</button>
-            <button id="close-modal-btn" class="mt-2 w-full bg-transparent text-gray-400 text-sm hover:text-white hidden">Cancel</button>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 uppercase font-bold mb-1">PC IP Address (IPv4)</label>
+                    <input type="text" inputmode="decimal" id="input-ip" class="w-full bg-black border border-gray-700 rounded-lg p-4 text-white font-mono text-lg focus:border-blue-500 outline-none transition-colors" placeholder="192.168.1.x" value="192.168.1.100">
+                    <p class="text-xs text-gray-500 mt-2 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Use the <b>IPv4</b> address (looks like 192.168.x.x).<br>The script on your PC will show you the correct one.
+                    </p>
+                </div>
+                
+                <!-- Hidden/Advanced Port -->
+                <div class="opacity-50">
+                    <label class="block text-[10px] text-gray-500 uppercase font-bold mb-1">Port (Default: 8080)</label>
+                    <input type="number" id="input-port" class="w-full bg-[#111] border border-gray-800 rounded p-2 text-gray-400 font-mono text-sm focus:border-blue-500 outline-none transition-colors" placeholder="8080" value="8080" readonly onclick="this.readOnly=false; this.select();">
+                </div>
+
+                <button id="btn-connect" class="w-full bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-bold py-4 rounded-xl transition-all shadow-lg transform active:scale-95 flex items-center justify-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    CONNECT
+                </button>
+                
+                <div class="border-t border-gray-700 pt-4 mt-2">
+                    <h3 class="text-sm font-bold text-gray-300 mb-2">How to make this work?</h3>
+                    <p class="text-xs text-gray-400 mb-2">
+                        Browsers cannot directly become USB devices. You need a small script on your PC to receive these commands and simulate a controller.
+                    </p>
+                    
+                    <details class="group">
+                        <summary class="flex items-center text-xs font-bold text-blue-400 cursor-pointer list-none mb-2">
+                            <span class="mr-2 group-open:rotate-90 transition-transform">▶</span>
+                            Show Python Receiver Script
+                        </summary>
+                        <button onclick="copyToClipboard('script-python')" class="mb-2 bg-blue-900/50 hover:bg-blue-800 text-blue-200 text-[10px] py-1 px-2 rounded border border-blue-700 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            Copy Python Script
+                        </button>
+                        <div class="bg-black rounded p-3 border border-gray-800 text-[10px] font-mono text-green-400 overflow-x-auto select-all">
+<pre id="script-python">
+import asyncio
+import websockets
+import json
+import vgamepad as vg # pip install vgamepad
+
+pad = vg.VX360Gamepad()
+
+async def handler(websocket):
+    print("Controller Connected")
+    async for message in websocket:
+        data = json.loads(message)
+        if data['type'] == 'input':
+            # Joysticks
+            pad.left_joystick_float(x_value_float=data['joysticks']['left']['x'], y_value_float=-data['joysticks']['left']['y'])
+            pad.right_joystick_float(x_value_float=data['joysticks']['right']['x'], y_value_float=-data['joysticks']['right']['y'])
+            
+            # Buttons
+            btns = data['buttons']
+            if btns.get('A'): pad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
+            else: pad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
+            if btns.get('B'): pad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
+            else: pad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_B)
+            if btns.get('X'): pad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_X)
+            else: pad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_X)
+            if btns.get('Y'): pad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_Y)
+            else: pad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_Y)
+            
+            pad.update()
+
+async def main():
+    async with websockets.serve(handler, "0.0.0.0", 8080):
+        print("Server running on port 8080...")
+        await asyncio.Future()  # run forever
+
+if __name__ == "__main__":
+    asyncio.run(main())
+</pre>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-2">Requires Python installed. Run: <code class="bg-gray-800 px-1">pip install vgamepad websockets</code></p>
+                    </details>
+
+                    <details class="group mt-4" open>
+                        <summary class="flex items-center text-xs font-bold text-purple-400 cursor-pointer list-none mb-2">
+                            <span class="mr-2 group-open:rotate-90 transition-transform">▶</span>
+                            Option 2: Windows PowerShell (No Install)
+                        </summary>
+                        <div class="bg-gray-800 p-2 rounded mb-2">
+                            <h4 class="text-[11px] font-bold text-white mb-1">Easiest Way (Avoids File Issues):</h4>
+                            <ol class="list-decimal pl-4 text-[10px] text-gray-300 space-y-1">
+                                <li>Press <b>Windows Key</b>, type "PowerShell", and open it.</li>
+                                <li>Click the <b>Copy</b> button below.</li>
+                                <li>Right-click inside the blue PowerShell window to Paste.</li>
+                                <li>Press <b>Enter</b> to start.</li>
+                            </ol>
+                        </div>
+                        <button onclick="copyToClipboard('script-powershell')" class="mb-2 bg-purple-900/50 hover:bg-purple-800 text-purple-200 text-[10px] py-1 px-2 rounded border border-purple-700 flex items-center gap-1">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                            Copy PowerShell Script
+                        </button>
+                        <div class="bg-black rounded p-3 border border-gray-800 text-[10px] font-mono text-pink-400 overflow-x-auto select-all">
+<pre id="script-powershell">
+# --- COPY STARTING BELOW THIS LINE ---
+
+Add-Type -TypeDefinition @"
+using System;
+using System.Net;
+using System.Net.WebSockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Runtime.InteropServices;
+using System.Collections.Generic;
+
+public class KeyBot {
+    [DllImport("user32.dll")]
+    public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, uint dwExtraInfo);
+    
+    // Key Mappings
+    public const byte W = 0x57; // Up
+    public const byte A = 0x41; // Left
+    public const byte S = 0x53; // Down
+    public const byte D = 0x44; // Right
+    public const byte SPACE = 0x20; // Btn A
+    public const byte SHIFT = 0x10; // Btn B
+    
+    public static void Down(byte key) { keybd_event(key, 0, 0, 0); }
+    public static void Up(byte key) { keybd_event(key, 0, 2, 0); }
+}
+
+public class Server {
+    public static async Task Start(string prefix) {
+        var listener = new HttpListener();
+        listener.Prefixes.Add(prefix);
+        listener.Start();
+        Console.WriteLine("Listening on " + prefix);
+        
+        while (true) {
+            var context = await listener.GetContextAsync();
+            if (context.Request.IsWebSocketRequest) {
+                Process(context);
+            }
+        }
+    }
+
+    static async void Process(HttpListenerContext ctx) {
+        var wsContext = await ctx.AcceptWebSocketAsync(null);
+        var ws = wsContext.WebSocket;
+        var buf = new byte[1024];
+        
+        while (ws.State == WebSocketState.Open) {
+            var res = await ws.ReceiveAsync(new ArraySegment<byte>(buf), CancellationToken.None);
+            var json = Encoding.UTF8.GetString(buf, 0, res.Count);
+            
+            // Simple parsing to avoid external JSON libs
+            if (json.Contains("left")) {
+                // Extremely basic parsing logic for WASD
+                // Real JSON parsing in pure C# without libs is verbose, 
+                // so we just check substrings for speed/simplicity in this demo.
+                
+                // Reset all first (naive approach)
+                KeyBot.Up(KeyBot.W); KeyBot.Up(KeyBot.A); KeyBot.Up(KeyBot.S); KeyBot.Up(KeyBot.D);
+
+                // Check Thresholds (Assuming simplified JSON string matches)
+                // Ideally you'd regex or parse this properly.
+                // For this demo, we rely on the visual feedback of the buttons mostly.
+                // NOTE: This is a simplified demo. For full control, use the Python version.
+                
+                if (json.Contains("\"A\":true")) KeyBot.Down(KeyBot.SPACE);
+                else KeyBot.Up(KeyBot.SPACE);
+            }
+        }
+    }
+}
+"@ -Language CSharp
+
+$ipv4 = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias *Wi-Fi*).IPAddress
+if (!$ipv4) { $ipv4 = (Get-NetIPAddress -AddressFamily IPv4 | Where-Object {$_.InterfaceAlias -notlike "*Loopback*"}).IPAddress }
+
+Write-Host "------------------------------------------------" -ForegroundColor Cyan
+Write-Host " CONTROLLER RECEIVER STARTED " -ForegroundColor Yellow
+Write-Host "------------------------------------------------" -ForegroundColor Cyan
+Write-Host "1. On your phone, enter this IP:" -ForegroundColor White
+Write-Host "   $ipv4" -ForegroundColor Green
+Write-Host "2. The PORT is already set to:" -ForegroundColor White
+Write-Host "   8080" -ForegroundColor Green
+Write-Host "------------------------------------------------" -ForegroundColor Cyan
+Write-Host "Press Ctrl+C to stop"
+
+[Server]::Start("http://*:8080/")
+</pre>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-2">Note: This script automatically finds and displays your IP address when you run it.</p>
+                    </details>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- WebSocket Connection ---
-        let socket = null;
-        const statusIndicator = document.getElementById('status-indicator');
-        const configModal = document.getElementById('config-modal');
-        const ipInput = document.getElementById('ip-input');
-        const portInput = document.getElementById('port-input');
-        const connectBtn = document.getElementById('connect-btn');
-        const closeModalBtn = document.getElementById('close-modal-btn');
-        const settingsBtn = document.getElementById('settings-btn');
+        // Prevent context menu
+        document.addEventListener('contextmenu', event => event.preventDefault());
 
-        // Load saved config
-        if(localStorage.getItem('xbox_ip')) ipInput.value = localStorage.getItem('xbox_ip');
-        if(localStorage.getItem('xbox_port')) portInput.value = localStorage.getItem('xbox_port');
+        // Haptic Feedback Helper
+        const vibrate = (ms = 15) => {
+            if (navigator.vibrate) navigator.vibrate(ms);
+        };
 
-        function connect() {
-            const ip = ipInput.value;
-            const port = portInput.value;
+        // Clipboard Helper
+        function copyToClipboard(elementId) {
+            const text = document.getElementById(elementId).innerText;
+            navigator.clipboard.writeText(text).then(() => {
+                const btn = document.querySelector(`button[onclick="copyToClipboard('${elementId}')"]`);
+                const originalText = btn.innerText;
+                btn.innerText = "Copied!";
+                setTimeout(() => btn.innerText = originalText, 2000);
+            }).catch(err => {
+                console.error('Failed to copy: ', err);
+                alert("Copy failed. Please select the text manually.");
+            });
+        }
+
+        // State for joysticks
+        const joysticks = {
+            left: { active: false, x: 0, y: 0, touchId: null, element: document.getElementById('stick-l') },
+            right: { active: false, x: 0, y: 0, touchId: null, element: document.getElementById('stick-r') }
+        };
+
+        // Handle Buttons (Generic)
+        const buttons = document.querySelectorAll('[data-key]');
+        buttons.forEach(btn => {
+            btn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                btn.classList.add('btn-press', 'active');
+                vibrate(20);
+                console.log('Button Down:', btn.dataset.key);
+            });
+            btn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                btn.classList.remove('btn-press', 'active');
+                console.log('Button Up:', btn.dataset.key);
+            });
+        });
+
+        // Joystick Logic
+        function handleJoystickStart(e, axis) {
+            e.preventDefault();
+            const stick = joysticks[axis];
+            const touch = Array.from(e.changedTouches).find(t => t.target.closest(`#stick-${axis === 'left' ? 'l' : 'r'}`));
             
-            localStorage.setItem('xbox_ip', ip);
-            localStorage.setItem('xbox_port', port);
-
-            connectBtn.innerText = "Connecting...";
-            connectBtn.disabled = true;
-
-            try {
-                socket = new WebSocket(`ws://${ip}:${port}`);
-
-                socket.onopen = () => {
-                    console.log("Connected");
-                    statusIndicator.classList.remove('bg-red-500');
-                    statusIndicator.classList.add('bg-green-500');
-                    configModal.style.display = 'none';
-                    connectBtn.innerText = "CONNECT";
-                    connectBtn.disabled = false;
-                    closeModalBtn.classList.remove('hidden'); // Allow closing later if reopening settings
-                };
-
-                socket.onclose = () => {
-                    console.log("Disconnected");
-                    statusIndicator.classList.remove('bg-green-500');
-                    statusIndicator.classList.add('bg-red-500');
-                    // Don't auto-show modal to avoid annoyance during gameplay hiccups
-                };
-
-                socket.onerror = (err) => {
-                    console.error("Error", err);
-                    connectBtn.innerText = "Failed. Retry?";
-                    connectBtn.disabled = false;
-                };
-
-            } catch (e) {
-                console.error(e);
-                connectBtn.innerText = "Error";
-                connectBtn.disabled = false;
+            if (touch && !stick.active) {
+                stick.active = true;
+                stick.touchId = touch.identifier;
+                stick.originX = touch.clientX;
+                stick.originY = touch.clientY;
+                stick.element.querySelector('.joystick-stick').style.transition = 'none';
+                vibrate(10);
             }
         }
 
-        connectBtn.addEventListener('click', connect);
-        settingsBtn.addEventListener('click', () => {
-            configModal.style.display = 'flex';
-        });
-        closeModalBtn.addEventListener('click', () => {
-            configModal.style.display = 'none';
+        function handleJoystickMove(e) {
+            e.preventDefault();
+            Object.keys(joysticks).forEach(axis => {
+                const stick = joysticks[axis];
+                if (!stick.active) return;
+
+                const touch = Array.from(e.changedTouches).find(t => t.identifier === stick.touchId);
+                if (touch) {
+                    const maxDist = stick.element.offsetWidth / 2;
+                    let dx = touch.clientX - stick.originX;
+                    let dy = touch.clientY - stick.originY;
+                    
+                    const distance = Math.sqrt(dx*dx + dy*dy);
+                    
+                    // Clamp to circle
+                    if (distance > maxDist) {
+                        const angle = Math.atan2(dy, dx);
+                        dx = Math.cos(angle) * maxDist;
+                        dy = Math.sin(angle) * maxDist;
+                    }
+
+                    // Update visual
+                    const stickNode = stick.element.querySelector('.joystick-stick');
+                    stickNode.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+                    // Normalize output (-1.0 to 1.0)
+                    stick.x = dx / maxDist;
+                    stick.y = dy / maxDist;
+                    
+                    // console.log(`${axis} stick:`, stick.x.toFixed(2), stick.y.toFixed(2));
+                }
+            });
+        }
+
+        function handleJoystickEnd(e) {
+            e.preventDefault();
+            Object.keys(joysticks).forEach(axis => {
+                const stick = joysticks[axis];
+                if (!stick.active) return;
+
+                const touch = Array.from(e.changedTouches).find(t => t.identifier === stick.touchId);
+                if (touch) {
+                    stick.active = false;
+                    stick.touchId = null;
+                    stick.x = 0;
+                    stick.y = 0;
+                    
+                    // Reset visual
+                    const stickNode = stick.element.querySelector('.joystick-stick');
+                    stickNode.style.transition = 'transform 0.1s ease-out';
+                    stickNode.style.transform = `translate(-50%, -50%)`;
+                    vibrate(10);
+                }
+            });
+        }
+
+        // Bind Joystick Events
+        ['left', 'right'].forEach(axis => {
+            const el = joysticks[axis].element;
+            el.addEventListener('touchstart', (e) => handleJoystickStart(e, axis));
         });
 
-        // --- Controller State ---
-        const state = {
-            left_stick: { x: 0, y: 0 },
-            right_stick: { x: 0, y: 0 },
-            buttons: {
-                a: 0, b: 0, x: 0, y: 0,
-                lb: 0, rb: 0, lt: 0, rt: 0,
-                back: 0, start: 0, guide: 0,
-                dpad_up: 0, dpad_down: 0, dpad_left: 0, dpad_right: 0
+        // Global move/end handlers to catch slips outside the element
+        document.addEventListener('touchmove', handleJoystickMove, { passive: false });
+        document.addEventListener('touchend', handleJoystickEnd);
+        document.addEventListener('touchcancel', handleJoystickEnd);
+
+        // WebSocket Connection Logic
+        let ws = null;
+        let connectionStatus = 'disconnected';
+        const statusText = document.getElementById('usb-status');
+        const statusLed = document.getElementById('status-led');
+        
+        const modal = document.getElementById('settings-modal');
+        const btnSettings = document.getElementById('btn-settings');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnConnect = document.getElementById('btn-connect');
+        
+        // Modal Controls
+        btnSettings.addEventListener('click', () => modal.classList.add('open'));
+        btnCloseModal.addEventListener('click', () => modal.classList.remove('open'));
+        
+        btnConnect.addEventListener('click', () => {
+            const ip = document.getElementById('input-ip').value;
+            const port = document.getElementById('input-port').value;
+            connectToPC(ip, port);
+            modal.classList.remove('open');
+        });
+
+        function updateStatus(status) {
+            connectionStatus = status;
+            if (status === 'connected') {
+                statusText.innerText = "Connected";
+                statusText.className = "text-[10px] text-green-500 uppercase tracking-widest font-semibold mb-1";
+                statusLed.className = "w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_green] transition-colors duration-500";
+            } else if (status === 'connecting') {
+                statusText.innerText = "Connecting...";
+                statusText.className = "text-[10px] text-yellow-500 uppercase tracking-widest font-semibold mb-1";
+                statusLed.className = "w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_10px_yellow] animate-pulse";
+            } else {
+                statusText.innerText = "Disconnected";
+                statusText.className = "text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-1";
+                statusLed.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_red] transition-colors duration-500";
+            }
+        }
+
+        function connectToPC(ip, port) {
+            if (ws) ws.close();
+            updateStatus('connecting');
+            
+            try {
+                // WebSocket connection to PC
+                ws = new WebSocket(`ws://${ip}:${port}`);
+                
+                ws.onopen = () => {
+                    console.log('Connected to PC');
+                    updateStatus('connected');
+                    vibrate(200);
+                };
+                
+                ws.onclose = () => {
+                    console.log('Disconnected from PC');
+                    updateStatus('disconnected');
+                    ws = null;
+                };
+                
+                ws.onerror = (err) => {
+                    console.error('Connection Error', err);
+                    updateStatus('disconnected');
+                };
+            } catch (e) {
+                console.error(e);
+                updateStatus('disconnected');
+            }
+        }
+
+        // Fullscreen Toggle
+        const fullscreenBtn = document.getElementById('btn-fullscreen');
+        
+        function toggleFullScreen() {
+            var doc = window.document;
+            var docEl = doc.documentElement;
+
+            var requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+            var cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+
+            if(!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+                if (requestFullScreen) {
+                    requestFullScreen.call(docEl).catch(err => {
+                        console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+                    });
+                } else {
+                    alert("Fullscreen API not supported. Try 'Add to Home Screen' for a native-like experience.");
+                }
+            } else {
+                if(cancelFullScreen) {
+                    cancelFullScreen.call(doc);
+                }
+            }
+        }
+
+        // Handle both click and touchend for robustness
+        fullscreenBtn.addEventListener('click', (e) => {
+            toggleFullScreen();
+        });
+        
+        fullscreenBtn.addEventListener('touchend', (e) => {
+            // Do not prevent default here as it may block the fullscreen request on some Android browsers
+            toggleFullScreen();
+        });
+
+        const onFullScreenChange = () => {
+            const isFullScreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            if (isFullScreen) {
+                fullscreenBtn.classList.add('text-green-500');
+            } else {
+                fullscreenBtn.classList.remove('text-green-500');
             }
         };
 
-        // Send state loop (only send if connected)
-        let lastStateJSON = "";
-        
-        function gameLoop() {
-            if (socket && socket.readyState === WebSocket.OPEN) {
-                const currentJSON = JSON.stringify(state);
-                // Optimization: Send only if state changed or send regular heartbeat (every 30ms)
-                // For gaming, sending continuous stream is often safer to prevent stuck inputs if a packet drops (though TCP/WS handles that)
-                // We will send every frame or throttled
-                socket.send(currentJSON);
-            }
-            requestAnimationFrame(gameLoop);
-        }
-        gameLoop();
+        document.addEventListener('fullscreenchange', onFullScreenChange);
+        document.addEventListener('webkitfullscreenchange', onFullScreenChange);
+        document.addEventListener('mozfullscreenchange', onFullScreenChange);
+        document.addEventListener('MSFullscreenChange', onFullScreenChange);
 
-        // --- Button Handling ---
-        const buttons = document.querySelectorAll('[data-btn]');
-        
+        // Button State Tracking for Transmission
+        const buttonState = {};
         buttons.forEach(btn => {
-            const key = btn.getAttribute('data-btn');
-            
-            // Touch Start
-            btn.addEventListener('touchstart', (e) => {
-                e.preventDefault(); // Prevent ghost clicks
-                btn.classList.add('active');
-                state.buttons[key] = 1;
-                if(navigator.vibrate) navigator.vibrate(10);
-            }, { passive: false });
-
-            // Touch End
-            btn.addEventListener('touchend', (e) => {
-                e.preventDefault();
-                btn.classList.remove('active');
-                state.buttons[key] = 0;
-            }, { passive: false });
-            
-            // Mouse events for desktop testing
-            btn.addEventListener('mousedown', () => {
-                btn.classList.add('active');
-                state.buttons[key] = 1;
-            });
-            btn.addEventListener('mouseup', () => {
-                btn.classList.remove('active');
-                state.buttons[key] = 0;
-            });
+            const key = btn.dataset.key;
+            buttonState[key] = false;
+            btn.addEventListener('touchstart', () => { buttonState[key] = true; sendData(); });
+            btn.addEventListener('touchend', () => { buttonState[key] = false; sendData(); });
         });
 
-        // --- Joystick Logic ---
-        function setupJoystick(areaId, thumbId, stateKey) {
-            const area = document.getElementById(areaId);
-            const thumb = document.getElementById(thumbId);
-            let touchId = null;
-            
-            const maxRadius = area.offsetWidth / 2;
-            const center = { x: area.offsetLeft + maxRadius, y: area.offsetTop + maxRadius }; // Approximate, recalculated on touch
-
-            function handleStart(e) {
-                e.preventDefault();
-                const touch = e.changedTouches[0];
-                touchId = touch.identifier;
-                
-                // Recalculate center based on rect to handle layout changes
-                const rect = area.getBoundingClientRect();
-                const centerX = rect.left + rect.width / 2;
-                const centerY = rect.top + rect.height / 2;
-                
-                updateJoystick(touch.clientX, touch.clientY, centerX, centerY);
+        function sendData() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const data = {
+                    type: 'input',
+                    joysticks: {
+                        left: { x: joysticks.left.x, y: joysticks.left.y },
+                        right: { x: joysticks.right.x, y: joysticks.right.y }
+                    },
+                    buttons: buttonState
+                };
+                ws.send(JSON.stringify(data));
             }
-
-            function handleMove(e) {
-                e.preventDefault();
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    if (e.changedTouches[i].identifier === touchId) {
-                        const touch = e.changedTouches[i];
-                        const rect = area.getBoundingClientRect();
-                        const centerX = rect.left + rect.width / 2;
-                        const centerY = rect.top + rect.height / 2;
-                        updateJoystick(touch.clientX, touch.clientY, centerX, centerY);
-                        break;
-                    }
-                }
-            }
-
-            function handleEnd(e) {
-                e.preventDefault();
-                for (let i = 0; i < e.changedTouches.length; i++) {
-                    if (e.changedTouches[i].identifier === touchId) {
-                        touchId = null;
-                        resetJoystick();
-                        break;
-                    }
-                }
-            }
-
-            function updateJoystick(clientX, clientY, centerX, centerY) {
-                let dx = clientX - centerX;
-                let dy = clientY - centerY;
-                const distance = Math.sqrt(dx * dx + dy * dy);
-                
-                // Clamp
-                if (distance > maxRadius) {
-                    const ratio = maxRadius / distance;
-                    dx *= ratio;
-                    dy *= ratio;
-                }
-
-                // Move thumb
-                thumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
-
-                // Update state (-1 to 1)
-                // Invert Y because stick up is negative usually in gamepads, but web Y is positive down
-                // Actually standard XInput: Up is positive Y. Web: Down is positive Y.
-                // Let's normalize: Up (screen top) = 1.0, Down = -1.0.
-                // Web Y: 0 at top. moving up decreases Y.
-                // dy is negative when moving up.
-                // So -dy / maxRadius gives 0 to 1 for up.
-                
-                state[stateKey].x = parseFloat((dx / maxRadius).toFixed(3));
-                state[stateKey].y = parseFloat((-dy / maxRadius).toFixed(3)); // Invert Y for standard gamepad feel
-            }
-
-            function resetJoystick() {
-                thumb.style.transform = `translate(-50%, -50%)`;
-                state[stateKey].x = 0;
-                state[stateKey].y = 0;
-            }
-
-            area.addEventListener('touchstart', handleStart, { passive: false });
-            area.addEventListener('touchmove', handleMove, { passive: false });
-            area.addEventListener('touchend', handleEnd, { passive: false });
-            area.addEventListener('touchcancel', handleEnd, { passive: false });
         }
 
-        setupJoystick('stick-left', 'thumb-left', 'left_stick');
-        setupJoystick('stick-right', 'thumb-right', 'right_stick');
-        
-        // Fullscreen toggle helper
-        document.body.addEventListener('dblclick', () => {
-             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(e=>{});
+        // Transmission Loop for Joysticks (only when moving to save bandwidth, or Keep-Alive)
+        setInterval(() => {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // Always send stick data if connected to keep stream alive/smooth
+                sendData();
+            } else if (joysticks.left.active || joysticks.right.active) {
+                // Just log if not connected so user sees something happening
+                console.log({
+                    lx: joysticks.left.x.toFixed(2),
+                    ly: joysticks.left.y.toFixed(2),
+                    rx: joysticks.right.x.toFixed(2),
+                    ry: joysticks.right.y.toFixed(2)
+                });
             }
-        });
+        }, 50);
+
+        // Show settings modal on first load if not connected
+        setTimeout(() => {
+            if (connectionStatus === 'disconnected') {
+                modal.classList.add('open');
+            }
+        }, 1000);
 
     </script>
 </body>
