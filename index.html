@@ -115,6 +115,17 @@
             display: none;
         }
         
+        /* Modal Styles */
+        .modal {
+            transition: opacity 0.3s ease-in-out;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .modal.open {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
         @media (orientation: portrait) {
             #landscape-warning {
                 display: flex;
@@ -353,20 +364,74 @@
         document.addEventListener('touchend', handleJoystickEnd);
         document.addEventListener('touchcancel', handleJoystickEnd);
 
-        // Fake Connection Logic
-        setTimeout(() => {
-            const statusDiv = document.getElementById('usb-status');
-            const led = document.getElementById('status-led');
+        // WebSocket Connection Logic
+        let ws = null;
+        let connectionStatus = 'disconnected';
+        const statusText = document.getElementById('status-text');
+        const statusLed = document.getElementById('status-led');
+        
+        const modal = document.getElementById('settings-modal');
+        const btnSettings = document.getElementById('btn-settings');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnConnect = document.getElementById('btn-connect');
+        
+        // Modal Controls
+        btnSettings.addEventListener('click', () => modal.classList.add('open'));
+        btnCloseModal.addEventListener('click', () => modal.classList.remove('open'));
+        
+        btnConnect.addEventListener('click', () => {
+            const ip = document.getElementById('input-ip').value;
+            const port = document.getElementById('input-port').value;
+            connectToPC(ip, port);
+            modal.classList.remove('open');
+        });
+
+        function updateStatus(status) {
+            connectionStatus = status;
+            if (status === 'connected') {
+                statusText.innerText = "Connected";
+                statusText.className = "text-[10px] text-green-500 uppercase tracking-widest font-semibold mb-1";
+                statusLed.className = "w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_green] transition-colors duration-500";
+            } else if (status === 'connecting') {
+                statusText.innerText = "Connecting...";
+                statusText.className = "text-[10px] text-yellow-500 uppercase tracking-widest font-semibold mb-1";
+                statusLed.className = "w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_10px_yellow] animate-pulse";
+            } else {
+                statusText.innerText = "Disconnected";
+                statusText.className = "text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-1";
+                statusLed.className = "w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_red] transition-colors duration-500";
+            }
+        }
+
+        function connectToPC(ip, port) {
+            if (ws) ws.close();
+            updateStatus('connecting');
             
-            statusDiv.innerText = "USB Connected";
-            statusDiv.classList.remove('text-gray-500');
-            statusDiv.classList.add('text-green-500');
-            
-            led.classList.remove('bg-red-500', 'shadow-[0_0_10px_red]');
-            led.classList.add('bg-green-500', 'shadow-[0_0_10px_green]');
-            
-            vibrate(100);
-        }, 1500);
+            try {
+                // WebSocket connection to PC
+                ws = new WebSocket(`ws://${ip}:${port}`);
+                
+                ws.onopen = () => {
+                    console.log('Connected to PC');
+                    updateStatus('connected');
+                    vibrate(200);
+                };
+                
+                ws.onclose = () => {
+                    console.log('Disconnected from PC');
+                    updateStatus('disconnected');
+                    ws = null;
+                };
+                
+                ws.onerror = (err) => {
+                    console.error('Connection Error', err);
+                    updateStatus('disconnected');
+                };
+            } catch (e) {
+                console.error(e);
+                updateStatus('disconnected');
+            }
+        }
 
         // Fullscreen Toggle
         const fullscreenBtn = document.getElementById('btn-fullscreen');
@@ -384,7 +449,6 @@
                         console.log(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
                     });
                 } else {
-                    // iOS doesn't support standard fullscreen API for elements in Safari
                     alert("Fullscreen API not supported. Try 'Add to Home Screen' for a native-like experience.");
                 }
             } else {
@@ -400,12 +464,11 @@
         });
         
         fullscreenBtn.addEventListener('touchend', (e) => {
-            e.preventDefault(); // Prevent mouse emulation handling (click)
+            e.preventDefault(); 
             e.stopPropagation();
             toggleFullScreen();
         });
 
-        // Update button icon based on fullscreen state
         const onFullScreenChange = () => {
             const isFullScreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
             if (isFullScreen) {
@@ -420,11 +483,36 @@
         document.addEventListener('mozfullscreenchange', onFullScreenChange);
         document.addEventListener('MSFullscreenChange', onFullScreenChange);
 
-        // Simulation Loop (Data Transmission)
+        // Button State Tracking for Transmission
+        const buttonState = {};
+        buttons.forEach(btn => {
+            const key = btn.dataset.key;
+            buttonState[key] = false;
+            btn.addEventListener('touchstart', () => { buttonState[key] = true; sendData(); });
+            btn.addEventListener('touchend', () => { buttonState[key] = false; sendData(); });
+        });
+
+        function sendData() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                const data = {
+                    type: 'input',
+                    joysticks: {
+                        left: { x: joysticks.left.x, y: joysticks.left.y },
+                        right: { x: joysticks.right.x, y: joysticks.right.y }
+                    },
+                    buttons: buttonState
+                };
+                ws.send(JSON.stringify(data));
+            }
+        }
+
+        // Transmission Loop for Joysticks (only when moving to save bandwidth, or Keep-Alive)
         setInterval(() => {
-            // Only log if something is happening to avoid spamming too much
-            if (joysticks.left.active || joysticks.right.active) {
-                // In a real app, this would be sent via WebSockets/WebRTC/WebUSB
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                // Always send stick data if connected to keep stream alive/smooth
+                sendData();
+            } else if (joysticks.left.active || joysticks.right.active) {
+                // Just log if not connected so user sees something happening
                 console.log({
                     lx: joysticks.left.x.toFixed(2),
                     ly: joysticks.left.y.toFixed(2),
@@ -433,6 +521,13 @@
                 });
             }
         }, 50);
+
+        // Show settings modal on first load if not connected
+        setTimeout(() => {
+            if (connectionStatus === 'disconnected') {
+                modal.classList.add('open');
+            }
+        }, 1000);
 
     </script>
 </body>
