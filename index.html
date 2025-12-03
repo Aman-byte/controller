@@ -161,9 +161,14 @@
             <div class="flex flex-col items-center justify-start pt-1">
                  <div id="usb-status" class="text-[10px] text-gray-500 uppercase tracking-widest font-semibold mb-1">USB Disconnected</div>
                  <div class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_red] transition-colors duration-500" id="status-led"></div>
-                 <button id="btn-fullscreen" class="mt-2 text-gray-600 hover:text-white transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                 </button>
+                 <div class="flex gap-4 mt-2">
+                    <button id="btn-fullscreen" class="text-gray-600 hover:text-white transition-colors p-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                    </button>
+                    <button id="btn-settings" class="text-gray-600 hover:text-white transition-colors p-2 animate-bounce">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                    </button>
+                 </div>
             </div>
 
             <div class="flex gap-2">
@@ -245,6 +250,87 @@
                     <div id="stick-r" class="joystick-base w-32 h-32 md:w-40 md:h-40" data-axis="right">
                          <div class="joystick-stick transition-transform duration-75"></div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Settings Modal -->
+    <div id="settings-modal" class="modal fixed inset-0 z-40 bg-black/80 flex items-center justify-center backdrop-blur-sm">
+        <div class="bg-[#1a1a1a] border border-gray-700 rounded-xl p-6 w-[90%] max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold text-white">Controller Settings</h2>
+                <button id="btn-close-modal" class="text-gray-400 hover:text-white">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 uppercase font-bold mb-1">PC IP Address</label>
+                    <input type="text" id="input-ip" class="w-full bg-black border border-gray-700 rounded p-3 text-white font-mono focus:border-blue-500 outline-none transition-colors" placeholder="192.168.x.x" value="192.168.1.100">
+                    <p class="text-[10px] text-gray-500 mt-1">Find this by running <code class="bg-gray-800 px-1">ipconfig</code> in cmd (Windows)</p>
+                </div>
+                
+                <div>
+                    <label class="block text-xs text-gray-400 uppercase font-bold mb-1">Port</label>
+                    <input type="text" id="input-port" class="w-full bg-black border border-gray-700 rounded p-3 text-white font-mono focus:border-blue-500 outline-none transition-colors" placeholder="8080" value="8080">
+                </div>
+
+                <button id="btn-connect" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded-lg transition-colors shadow-lg">
+                    Connect
+                </button>
+                
+                <div class="border-t border-gray-700 pt-4 mt-2">
+                    <h3 class="text-sm font-bold text-gray-300 mb-2">How to make this work?</h3>
+                    <p class="text-xs text-gray-400 mb-2">
+                        Browsers cannot directly become USB devices. You need a small script on your PC to receive these commands and simulate a controller.
+                    </p>
+                    
+                    <details class="group">
+                        <summary class="flex items-center text-xs font-bold text-blue-400 cursor-pointer list-none mb-2">
+                            <span class="mr-2 group-open:rotate-90 transition-transform">▶</span>
+                            Show Python Receiver Script
+                        </summary>
+                        <div class="bg-black rounded p-3 border border-gray-800 text-[10px] font-mono text-green-400 overflow-x-auto select-all">
+<pre>
+import asyncio
+import websockets
+import json
+import vgamepad as vg # pip install vgamepad
+
+pad = vg.VX360Gamepad()
+
+async def handler(websocket):
+    print("Controller Connected")
+    async for message in websocket:
+        data = json.loads(message)
+        if data['type'] == 'input':
+            # Joysticks
+            pad.left_joystick_float(x_value_float=data['joysticks']['left']['x'], y_value_float=-data['joysticks']['left']['y'])
+            pad.right_joystick_float(x_value_float=data['joysticks']['right']['x'], y_value_float=-data['joysticks']['right']['y'])
+            
+            # Buttons (Example for A/B/X/Y)
+            btns = data['buttons']
+            if btns.get('A'): pad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
+            else: pad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
+            
+            # ... Add other buttons mapping here ...
+            
+            pad.update()
+
+async def main():
+    async with websockets.serve(handler, "0.0.0.0", 8080):
+        print("Server running on port 8080...")
+        await asyncio.Future()  # run forever
+
+if __name__ == "__main__":
+    asyncio.run(main())
+</pre>
+                        </div>
+                        <p class="text-[10px] text-gray-500 mt-2">Requires Python installed. Run: <code class="bg-gray-800 px-1">pip install vgamepad websockets</code></p>
+                    </details>
                 </div>
             </div>
         </div>
@@ -464,8 +550,7 @@
         });
         
         fullscreenBtn.addEventListener('touchend', (e) => {
-            e.preventDefault(); 
-            e.stopPropagation();
+            // Do not prevent default here as it may block the fullscreen request on some Android browsers
             toggleFullScreen();
         });
 
